@@ -1,0 +1,23 @@
+{
+  "name": "ats-logistics-suite",
+  "version": "1.2.0",
+  "description": "Aplikasi Pengiriman, Penjadwalan, Rute & Tagihan terintegrasi Accurate Online",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "accurate-online",
+    "logistics",
+    "delivery-routing",
+    "checker-verification",
+    "urgent-dispatch"
+  ],
+  "author": "ATS Logistics",
+  "license": "ISC",
+  "dependencies": {
+    "playwright-core": "^1.64.0"
+  }
+}

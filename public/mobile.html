@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ATS Logistics — Mobile Pengiriman Lapangan</title>
+  <meta name="description" content="Aplikasi mobile field delivery cepat untuk driver dan checker lapangan. Update status, serah terima, dan alasan penolakan secara instan.">
+  <meta name="theme-color" content="#1e3a8a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="/css/mobile.css">
+</head>
+<body>
+
+  <!-- Mobile Viewport Wrapper (Phone frame on desktop, 100% on phones) -->
+  <div class="mobile-viewport-container">
+
+    <!-- Toast Notification Popup -->
+    <div class="mobile-toast" id="mobile-toast">Status diperbarui</div>
+
+    <!-- ═══════════════════════════════════════════════════
+         APP HEADER & DRIVER PROFILE BAR
+         ═══════════════════════════════════════════════════ -->
+    <header class="app-header">
+      <div class="header-top">
+        <div class="brand-badge">
+          <div class="brand-icon-box">ATS</div>
+          <div>
+            <div class="brand-text-title">Pengiriman Lapangan</div>
+            <div class="brand-text-sub">ATS Mobile Driver & Checker</div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <a href="/" class="btn-header-icon" title="Kembali ke Web Suite">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Desktop
+          </a>
+        </div>
+      </div>
+
+      <!-- Driver Quick Switcher -->
+      <div class="driver-pill-box">
+        <div class="driver-pill-info">
+          <div class="driver-avatar-dot" id="driver-avatar-dot">DR</div>
+          <select id="driver-select" class="driver-select-native" aria-label="Pilih Driver">
+            <option value="all">Semua Driver Armada</option>
+          </select>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════
+         TOOLBAR: SEARCH & FILTER STATUS TABS
+         ═══════════════════════════════════════════════════ -->
+    <div class="toolbar-container">
+      <!-- Search Input -->
+      <div class="search-input-wrap">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search-field" class="search-field" placeholder="Cari No. SJ, Customer, Alamat..." autocomplete="off">
+        <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Clear Search">&times;</button>
+      </div>
+
+      <!-- Segmented Status Tabs -->
+      <div class="tabs-scroll-row">
+        <button type="button" class="filter-chip active" data-status="ALL">
+          <span>Semua</span>
+          <span class="chip-count" id="count-all">0</span>
+        </button>
+        <button type="button" class="filter-chip" data-status="PENDING">
+          <span>Perlu Kirim</span>
+          <span class="chip-count" id="count-pending">0</span>
+        </button>
+        <button type="button" class="filter-chip" data-status="APPROVED">
+          <span>Disetujui</span>
+          <span class="chip-count" id="count-delivered">0</span>
+        </button>
+        <button type="button" class="filter-chip" data-status="REJECTED">
+          <span>Ditolak</span>
+          <span class="chip-count" id="count-rejected">0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Date Quick Switcher Bar -->
+    <div class="date-bar">
+      <span>Jadwal Pengiriman:</span>
+      <div class="date-tags-group">
+        <button type="button" class="date-btn-tag active" data-date="all">Semua</button>
+        <button type="button" class="date-btn-tag" data-date="today">Hari Ini</button>
+        <button type="button" class="date-btn-tag" data-date="tomorrow">Besok</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         DELIVERY CARDS CONTAINER (DYNAMIC LIST)
+         ═══════════════════════════════════════════════════ -->
+    <main class="deliveries-list-container" id="deliveries-list">
+      <!-- Cards rendered dynamically by mobile.js -->
+    </main>
+
+    <!-- Floating Action Button (FAB) -->
+    <div class="fab-bottom-wrapper">
+      <button type="button" class="btn-fab-submit" id="btn-fab-new-update">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        Update Status Pengiriman
+      </button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         BOTTOM SHEET: FORMULIR STATUS LAPANGAN
+         Pre-filled • Disetujui vs Ditolak • Alasan Tolak Validated
+         ═══════════════════════════════════════════════════ -->
+    <div class="modal-backdrop" id="update-modal-backdrop">
+      <div class="bottom-sheet" id="bottom-sheet-content">
+        <div class="sheet-handle-bar"></div>
+
+        <div class="sheet-header">
+          <div class="sheet-header-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Formulir Lapangan
+          </div>
+          <button type="button" class="btn-close-sheet" id="btn-close-sheet" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="sheet-body">
+
+          <!-- 1. PEMILIHAN / PRE-FILLED SURAT JALAN -->
+          <div class="form-group-section">
+            <label class="form-label-title" for="modal-shipment-select">
+              <span>Nama Pengiriman / No. Surat Jalan</span>
+              <span style="font-size:11px; color:var(--primary); font-weight:700;">Pre-filled Otomatis</span>
+            </label>
+            <select id="modal-shipment-select" class="select-shipment-native" aria-label="Pilih Surat Jalan">
+              <!-- Auto filled -->
+            </select>
+          </div>
+
+          <!-- Pre-filled Detail Card (Customer & Alamat) -->
+          <div class="prefilled-shipment-card" id="prefilled-summary-box">
+            <!-- Dynamic summary content -->
+          </div>
+
+          <!-- 2. HASIL PENGIRIMAN: DISETUJUI ATAU DITOLAK (2 TOMBOL BESAR TACTILE) -->
+          <div class="form-group-section">
+            <label class="form-label-title">
+              <span>Hasil Serah Terima Lapangan</span>
+              <span style="font-size:11px; color:#64748b;">Pilih 1 Sentuhan</span>
+            </label>
+            <div class="decision-cards-grid">
+              <!-- Tombol Disetujui -->
+              <button type="button" class="decision-card-btn card-approve active" id="btn-decision-approve">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <div class="decision-title">DISETUJUI</div>
+                <div class="decision-subtext">Barang diterima sukses</div>
+              </button>
+
+              <!-- Tombol Ditolak -->
+              <button type="button" class="decision-card-btn card-reject" id="btn-decision-reject">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                <div class="decision-title">DITOLAK</div>
+                <div class="decision-subtext">Gagal serah terima</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3A. SUB-FORM JIKA DISETUJUI (PENERIMA & TTD) -->
+          <div class="subform-approved-box" id="subform-approved">
+            <div style="font-size:13px; font-weight:800; color:var(--success-dark); display:flex; align-items:center; gap:6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Detail Penerima Barang
+            </div>
+
+            <!-- NAMA PENERIMA (WAJIB DIISI SAAT DISETUJUI) -->
+            <div class="form-group-section" style="background:#fff; padding:12px; border-radius:var(--radius-sm); border:1.5px solid var(--success-border);">
+              <label class="form-label-title" for="input-receiver-name" style="color:var(--success-dark);">
+                <span style="display:flex; align-items:center; gap:5px;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Nama Penerima Barang
+                </span>
+                <span style="font-size:10px; font-weight:800; background:var(--success); color:white; padding:1px 6px; border-radius:4px;">* WAJIB DIISI</span>
+              </label>
+              <input type="text" id="input-receiver-name" class="text-input-field" placeholder="Ketik atau pilih nama penerima..." value="" style="font-size:14.5px; font-weight:700; color:#0f172a; border:2px solid var(--success-border);">
+
+              <!-- Quick chips penerima untuk menghemat waktu pengetikan -->
+              <div style="margin-top:6px;">
+                <span style="font-size:11px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">Pilihan Cepat Penerima:</span>
+                <div class="receiver-quick-chips">
+                  <button type="button" class="receiver-chip-tag selected" data-receiver="Customer Sendiri">👤 PIC Customer</button>
+                  <button type="button" class="receiver-chip-tag" data-receiver="Security / Pos Satpam">🛡️ Pos Satpam / Security</button>
+                  <button type="button" class="receiver-chip-tag" data-receiver="Staff Gudang Receiving">📦 Staff Gudang Receiving</button>
+                  <button type="button" class="receiver-chip-tag" data-receiver="Resepsionis / Front Office">🏢 Resepsionis / FO</button>
+                  <button type="button" class="receiver-chip-tag" data-receiver="Rekan Kerja / Karyawan">👥 Rekan / Karyawan</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Nomor Kontak / Telepon Penerima (Opsional) -->
+            <div class="form-group-section">
+              <label class="form-label-title" for="input-receiver-phone">
+                <span>No. HP / WA Penerima (Opsional)</span>
+                <span style="font-size:11px; color:#64748b;">Untuk Bukti</span>
+              </label>
+              <input type="tel" id="input-receiver-phone" class="text-input-field" placeholder="Contoh: 081234567890">
+            </div>
+
+            <!-- Tanda Tangan Digital Pad -->
+            <div class="form-group-section">
+              <label class="form-label-title">
+                <span>Tanda Tangan Digital Penerima</span>
+                <span style="font-size:11px; color:#64748b;">Sentuh layar</span>
+              </label>
+              <div class="signature-canvas-box">
+                <canvas id="signature-canvas"></canvas>
+                <button type="button" class="canvas-clear-link" id="btn-clear-signature">Hapus</button>
+              </div>
+            </div>
+
+            <!-- Catatan Tambahan (Opsional) -->
+            <div class="form-group-section">
+              <label class="form-label-title" for="input-delivery-notes">
+                <span>Catatan Tambahan (Opsional)</span>
+              </label>
+              <input type="text" id="input-delivery-notes" class="text-input-field" placeholder="Contoh: Titip di pos satpam gerbang 2">
+            </div>
+          </div>
+
+          <!-- 3B. SUB-FORM JIKA DITOLAK (WAJIB MENGISI ALASAN PENOLAKAN) -->
+          <div class="subform-rejected-box" id="subform-rejected" style="display:none;">
+            <div class="mandatory-alert-header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>ALASAN PENOLAKAN</span>
+              <span class="mandatory-star">* WAJIB DIISI</span>
+            </div>
+
+            <p style="font-size:12px; color:var(--danger-dark); line-height:1.35;">
+              Pengiriman tidak dapat disimpan tanpa alasan. Pilih salah satu alasan cepat di bawah atau ketik rinciannya:
+            </p>
+
+            <!-- 1-TAP QUICK REJECTION CHIPS (TIDAK MEMBUANG WAKTU KETIK DI JALAN) -->
+            <div class="rejection-chips-list">
+              <button type="button" class="rejection-chip-item" data-reason="Barang Rusak / Pecah / Cacat Fisik">
+                📦 Barang Rusak / Cacat
+              </button>
+              <button type="button" class="rejection-chip-item" data-reason="Toko / Alamat Tutup (Tidak Ada Orang)">
+                🏢 Toko / Alamat Tutup
+              </button>
+              <button type="button" class="rejection-chip-item" data-reason="Customer Menolak Menerima Pesanan">
+                🙅 Customer Menolak Terima
+              </button>
+              <button type="button" class="rejection-chip-item" data-reason="Item Tidak Sesuai Surat Jalan / PO">
+                📑 Item Tidak Sesuai PO
+              </button>
+              <button type="button" class="rejection-chip-item" data-reason="Tiba di Luar Jam Operasional Receiving">
+                ⏰ Di Luar Jam Receiving
+              </button>
+              <button type="button" class="rejection-chip-item" data-reason="Customer Meminta Reschedule Jadwal">
+                📅 Customer Minta Reschedule
+              </button>
+              <button type="button" class="rejection-chip-item" data-reason="Akses Jalan Terhalang / Tidak Bisa Masuk">
+                🚫 Akses Jalan Terhalang
+              </button>
+              <button type="button" class="rejection-chip-item" data-reason="Penerima Tidak Bisa Dihubungi (HP Tidak Aktif)">
+                📞 Tidak Bisa Dihubungi
+              </button>
+            </div>
+
+            <!-- Textarea Alasan (Auto-filled by Chips, or Custom) -->
+            <div class="form-group-section">
+              <label class="form-label-title" for="textarea-rejection-reason" style="color:var(--danger-dark);">
+                <span>Rincian Alasan Penolakan</span>
+                <span style="font-size:11px; font-weight:800; color:var(--danger);">Wajib Terisi</span>
+              </label>
+              <textarea id="textarea-rejection-reason" class="textarea-rejection" placeholder="Pilih chip di atas atau ketik alasan penolakan secara jelas..."></textarea>
+            </div>
+
+            <!-- NAMA PIHAK YANG MENOLAK DI LOKASI -->
+            <div class="form-group-section" style="background:#fff; padding:10px; border-radius:var(--radius-sm); border:1px solid var(--danger-border); margin-top:4px;">
+              <label class="form-label-title" for="input-rejector-name" style="color:var(--danger-dark);">
+                <span style="display:flex; align-items:center; gap:5px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Nama Pihak Yang Menolak (Opsional)
+                </span>
+                <span style="font-size:10px; color:#64748b;">Untuk Catatan</span>
+              </label>
+              <input type="text" id="input-rejector-name" class="text-input-field" placeholder="Nama pihak yang menolak (contoh: Bpk. Hendra - Gudang)">
+              <div class="receiver-quick-chips" style="margin-top:5px;">
+                <button type="button" class="receiver-chip-tag" data-rejector="Customer Sendiri">PIC Customer</button>
+                <button type="button" class="receiver-chip-tag" data-rejector="Satpam / Security">Satpam</button>
+                <button type="button" class="receiver-chip-tag" data-rejector="Kepala Gudang">Kepala Gudang</button>
+                <button type="button" class="receiver-chip-tag" data-rejector="Tidak Ada Orang">Tidak Ada Orang</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- STICKY ACTION BUTTON FOOTER -->
+        <div class="sheet-footer">
+          <button type="button" class="btn-submit-field" id="btn-submit-field-action">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            SIMPAN: PENGIRIMAN DISETUJUI
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/js/mobile.js"></script>
+</body>
+</html>

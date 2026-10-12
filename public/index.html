@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATS Logistics Suite — Jadwal & Penugasan Pengiriman</title>
+  <meta name="description" content="Sistem 2-tahap: Marketing jadwalkan tanggal → Dispatcher tugaskan driver. Terintegrasi Accurate Online.">
+  <link rel="stylesheet" href="/css/index.css">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <script src="/vendor/leaflet/leaflet.js"></script>
+</head>
+<body>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <div class="app-layout">
+
+    <!-- ═══════════════════════════════════════════════
+         SIDEBAR NAVIGATION
+         ═══════════════════════════════════════════════ -->
+    <aside class="app-sidebar no-print" id="app-sidebar">
+      <!-- Brand Logo & Title -->
+      <div class="sidebar-brand">
+        <div class="brand-icon">ATS</div>
+        <div class="brand-info">
+          <div class="brand-name">ATS Logistics</div>
+          <div class="brand-desc">Suite v2.0 • Accurate</div>
+        </div>
+      </div>
+
+      <!-- Accurate Connection Indicator -->
+      <div class="sidebar-status-box">
+        <div class="status-badge connected" id="accurate-badge">
+          <span class="status-dot"></span>
+          <span id="accurate-text">Accurate: Terhubung</span>
+        </div>
+      </div>
+
+      <!-- Quick Mobile Field App Shortcut -->
+      <div style="padding: 0 12px 10px 12px;">
+        <a href="/mobile" target="_blank" class="btn btn-outline btn-sm btn-block" style="display:flex; align-items:center; justify-content:center; gap:6px; font-weight:700; color:var(--primary); text-decoration:none; padding:8px 10px; background:var(--primary-light, #eff6ff); border:1.5px solid var(--primary-border, #bfdbfe); border-radius:8px;" title="Buka Mode Lapangan Khusus Driver & Checker di HP">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          📱 Mode HP Lapangan
+        </a>
+      </div>
+
+      <!-- Navigation Menu -->
+      <div class="sidebar-nav-title">Menu Utama</div>
+      <nav class="sidebar-nav" id="toolbar-tabs">
+        <!-- Tabs will be rendered by JS based on user permissions -->
+      </nav>
+
+      <!-- Sidebar Footer (Profile & Logout) -->
+      <div class="sidebar-footer">
+        <div class="user-profile-card" id="user-profile-display" style="display:none;">
+          <div class="user-avatar-circle" id="user-avatar">AD</div>
+          <div class="user-info-text">
+            <div class="user-name-label" id="user-name-label">Admin</div>
+            <div class="user-role-badge" id="user-role-label">Superadmin</div>
+          </div>
+          <button class="btn-logout" id="btn-logout" type="button" title="Keluar">Keluar</button>
+        </div>
+        <button class="btn btn-primary btn-sm btn-block" id="btn-header-login" type="button" style="display:none; width:100%;">Masuk</button>
+      </div>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- ═══════════════════════════════════════════════
+         MAIN CONTENT AREA
+         ═══════════════════════════════════════════════ -->
+    <div class="app-main-area">
+      <!-- Slim Topbar -->
+      <header class="main-topbar no-print">
+        <div class="topbar-left">
+          <button class="btn-sidebar-toggle" id="btn-toggle-sidebar" type="button" aria-label="Toggle Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <div class="topbar-title" id="topbar-page-title">Penjadwalan Marketing</div>
+        </div>
+        <div class="topbar-right" style="display:flex; align-items:center; gap:8px;">
+          <a href="/mobile" target="_blank" class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; color:var(--primary); text-decoration:none; padding:5px 10px; border-radius:6px; border:1px solid #bfdbfe; background:#eff6ff;" title="Buka Mode Mobile Lapangan">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            📱 Mode HP Lapangan
+          </a>
+          <span class="topbar-tag">Gudang J40 & J23</span>
+        </div>
+      </header>
+
+      <main class="main-wrapper">
+
+    <!-- TAB: PENGIRIMAN HARI INI (Command Center Khusus Hari Ini) -->
+    <section class="view-section" id="tab-hari-ini">
+      <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <div>
+          <h2>Pengiriman Hari Ini — Command Center</h2>
+          <p>Tampilan khusus hari ini yang merangkum seluruh modul operasional aktif: beban muatan driver (target 8–10 SJ sejalur), urutan rute jalur terdekat, dan status pengiriman.</p>
+        </div>
+        <div class="today-date-picker-box no-print" style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Pilih Tanggal:</span>
+          <button class="btn btn-outline btn-sm" id="btn-today-date-today" type="button">Hari Ini</button>
+          <button class="btn btn-primary btn-sm" id="btn-today-date-tomorrow" type="button">Besok (02/10)</button>
+          <input type="date" class="select-filter" id="today-custom-date" style="padding:4px 8px; font-size:12px;" value="2026-10-02">
+          <button class="btn btn-outline btn-sm" id="btn-refresh-today" type="button">Muat Ulang</button>
+        </div>
+      </div>
+
+      <!-- Module 1: KPI Stats Summary Hari Ini -->
+      <div class="stat-cards-grid no-print">
+        <div class="stat-card card-blue">
+          <div class="stat-label">Total SJ Hari Ini</div>
+          <div class="stat-value" id="today-stat-total">0</div>
+          <div class="stat-desc" id="today-stat-date-label">Tanggal Operasional Aktif</div>
+        </div>
+        <div class="stat-card card-sedang">
+          <div class="stat-label">Muatan Mobil vs Motor</div>
+          <div class="stat-value" id="today-stat-vehicles">0 / 0</div>
+          <div class="stat-desc">Armada aktif bertugas</div>
+        </div>
+        <div class="stat-card card-besar">
+          <div class="stat-label">Kapasitas Muat Driver</div>
+          <div class="stat-value" id="today-stat-capacity">8-10 SJ</div>
+          <div class="stat-desc">Target ideal muatan sejalur</div>
+        </div>
+        <div class="stat-card card-kecil">
+          <div class="stat-label">Ambil di J23 (Pickup)</div>
+          <div class="stat-value" id="today-stat-pickup">0</div>
+          <div class="stat-desc">Tidak masuk rute armada</div>
+        </div>
+      </div>
+
+      <!-- Module 2: Modul Penugasan Driver & Kapasitas 8-10 SJ Sejalur -->
+      <div class="today-submodule-card">
+        <div class="today-submodule-header">
+          <div class="today-submodule-title">
+            <span class="submodule-badge">MODUL 1</span>
+            <h3>Beban Kerja Pengemudi & Kapasitas Muatan (Target 8–10 SJ Sejalur)</h3>
+          </div>
+          <div class="today-submodule-note">
+            Standar ATS: 1 Pengemudi membawa 8–10 Surat Jalan pada rute & koridor yang sama.
+          </div>
+        </div>
+        <div class="driver-capacity-grid" id="today-driver-capacity-cards">
+          <!-- Rendered by JS -->
+          <div class="empty-state">Memuat data pengemudi hari ini...</div>
+        </div>
+      </div>
+
+      <!-- Module 3: Modul Otomasi Jalur Rute Hari Ini -->
+      <div class="today-submodule-card">
+        <div class="today-submodule-header">
+          <div class="today-submodule-title">
+            <span class="submodule-badge">MODUL 2</span>
+            <h3>Susunan Otomasi Jalur Rute Hari Ini (Target Terdekat ke Titik Akhir)</h3>
+          </div>
+          <div class="today-submodule-note">
+            Titik awal dari Gudang J40 / J23 → diurutkan ke stop terdekat sampai tujuan akhir koridor.
+          </div>
+        </div>
+        <div class="today-routes-container" id="today-routes-container">
+          <!-- Rendered by JS -->
+          <div class="empty-state">Memuat rute jalur aktif hari ini...</div>
+        </div>
+      </div>
+
+      <!-- Module 4: Tabel Pengiriman Khusus Hari Ini -->
+      <div class="today-submodule-card">
+        <div class="today-submodule-header">
+          <div class="today-submodule-title">
+            <span class="submodule-badge">MODUL 3</span>
+            <h3>Daftar Seluruh Pengiriman Hari Ini</h3>
+          </div>
+          <div class="filter-group no-print" style="margin:0;">
+            <input type="text" class="search-input" id="today-search" placeholder="Cari SJ, Pelanggan, PO, atau Alamat..." style="width:260px;">
+          </div>
+        </div>
+        <div class="table-card" style="margin:0; box-shadow:none; border:none;">
+          <table class="schedule-table">
+            <thead>
+              <tr>
+                <th style="width:40px; text-align:center;">No.</th>
+                <th style="width:13%;">No. Surat Jalan</th>
+                <th style="width:13%;">No. PO</th>
+                <th style="width:22%;">Pelanggan & Alamat</th>
+                <th style="width:22%;">Catatan Khusus Operasional</th>
+                <th style="width:14%;">Driver & Armada</th>
+                <th style="width:10%; text-align:center;">Status</th>
+                <th style="width:6%; text-align:center;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="today-shipments-tbody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: MARKETING — Jadwalkan Tanggal Kirim (Connect Langsung Delivery Order Accurate) -->
+    <section class="view-section" id="tab-jadwal-marketing">
+      <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <div>
+          <h2>Jadwalkan Pengiriman (Delivery Order Accurate)</h2>
+          <p>Ketik nomor DO / SJ atau nama customer untuk mencari Surat Jalan langsung dari Accurate Online, periksa/ubah alamat, tentukan titik peta, dan jadwalkan pengiriman.</p>
+        </div>
+        <div class="no-print" style="display:flex; gap:8px;">
+          <button class="btn btn-outline" id="btn-do-show-recent" type="button">
+            <span>🔄</span> Tampilkan Dokumen Terbaru (DO / JC / IT / MA)
+          </button>
+        </div>
+      </div>
+
+      <!-- SEARCH BAR DOKUMEN ACCURATE (LIVE SEARCH: DO, JC, IT, MA) -->
+      <div class="do-search-box-wrap no-print" style="background:#ffffff; border:1px solid #bfdbfe; border-radius:10px; padding:16px; margin-bottom:20px; box-shadow:0 4px 15px rgba(37,99,235,0.06);">
+        <label class="form-label" style="font-weight:700; color:#1e40af; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <span>🔍 Cari Dokumen Pengiriman (DO, JC, IT, MA) Accurate Online:</span>
+          <span style="font-size:11px; font-weight:normal; color:#3b82f6;">Mendukung DO (Pengiriman), JC (Job Costing), IT (Pindah Barang), MA (Penyesuaian Bahan)</span>
+        </label>
+        <div style="position:relative;">
+          <div style="display:flex; gap:8px;">
+            <div style="position:relative; flex:1;">
+              <input type="text" class="form-control" id="do-live-search-input" 
+                     placeholder="Ketik Nomor Dokumen (cth: JC.2026.10..., IT.2026..., MA.2026..., DO...) atau Nama Pelanggan / Proyek..." 
+                     style="font-size:14px; padding:12px 14px; border:2px solid #3b82f6; border-radius:8px; width:100%;" 
+                     autocomplete="off">
+              <span id="do-search-spinner" style="position:absolute; right:12px; top:12px; display:none; font-size:16px;">⏳</span>
+            </div>
+            <button class="btn btn-primary" id="btn-do-search-exec" type="button" style="padding:0 20px; border-radius:8px; font-weight:600;">
+              Cari Dokumen
+            </button>
+          </div>
+
+          <!-- Dropdown Hasil Pencarian Accurate DO / JC / IT / MA -->
+          <div id="do-search-dropdown" class="do-search-dropdown-menu" style="display:none; position:absolute; top:100%; left:0; right:0; max-height:380px; overflow-y:auto; background:#ffffff; border:2px solid #93c5fd; border-radius:8px; margin-top:6px; z-index:9999; box-shadow:0 10px 25px rgba(0,0,0,0.1);">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- KARTU PENJADWALAN DOKUMEN AKTIF (TAMPIL SAAT DOKUMEN DIPILIH) -->
+      <div id="do-scheduling-card" class="do-schedule-card" style="display:none;">
+        <div class="do-card-header">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="status-badge connected" id="do-card-type-badge" style="font-size:11px;">Dokumen Terpilih</span>
+              <span class="status-pill siap" id="do-card-status-badge" style="display:none;">Sudah Terjadwal</span>
+            </div>
+            <h3 id="do-card-title" style="margin:6px 0 2px 0; font-size:18px; color:#1e40af;">DO.2024.10.0001</h3>
+            <div style="font-size:13px; color:var(--text-secondary);">
+              Pelanggan / Tujuan: <strong id="do-card-customer">PT. Contoh Pelanggan</strong> | No. PO: <span id="do-card-po">-</span> | Tanggal: <span id="do-card-transdate">-</span>
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-do-card-close" title="Tutup Panel">&times; Tutup</button>
+        </div>
+
+        <!-- Rincian Produk SKU di dalam DO -->
+        <div style="margin-bottom:16px;">
+          <div style="font-weight:700; font-size:12px; color:var(--text-secondary); margin-bottom:6px; display:flex; justify-content:space-between;">
+            <span>📦 Produk / SKU di dalam Surat Jalan Ini (<span id="do-card-item-count">0</span> item):</span>
+            <span style="font-size:11px; color:#2563eb; font-weight:normal;">Otomatis masuk ke tab Pengkategorian SKU Tim Gudang</span>
+          </div>
+          <div style="max-height:140px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; background:#f8fafc;">
+            <table class="schedule-table" style="font-size:11px; margin:0;">
+              <thead>
+                <tr style="background:#f1f5f9;">
+                  <th style="width:30px; text-align:center;">No</th>
+                  <th style="width:25%;">SKU</th>
+                  <th style="width:45%;">Nama Produk</th>
+                  <th style="width:15%; text-align:center;">Qty</th>
+                  <th style="width:15%;">Satuan</th>
+                </tr>
+              </thead>
+              <tbody id="do-card-items-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Form Edit Alamat & Koordinat Map -->
+        <div class="do-card-grid">
+          <div>
+            <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Alamat Kirim (Opsional: Edit jika alamat tidak tepat):</span>
+              <span id="do-card-geocode-status" style="font-size:11px; color:#2563eb; font-weight:600;"></span>
+            </label>
+            <div style="position:relative;">
+              <textarea class="form-control" id="do-card-address" rows="3" placeholder="Alamat lengkap tujuan pengiriman (Ketik untuk deteksi otomatis di peta)..." style="font-size:12px;"></textarea>
+              <div id="do-card-address-suggestions" class="address-suggest-dropdown" style="display:none;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+              <span style="font-size:11px; color:var(--text-muted);">💡 Ketik alamat/nama tempat, koordinat & zona otomatis terdeteksi.</span>
+              <button type="button" class="btn btn-outline btn-xs" id="btn-do-card-find-coords" style="font-size:11px; padding:3px 8px; border-color:#2563eb; color:#2563eb; font-weight:600; background:#f0f7ff;">
+                🔍 Deteksi Koordinat Alamat
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Titik Koordinat & Zona:</span>
+              <span class="zone-badge" id="do-card-zone-badge">Zona B</span>
+            </label>
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+              <input type="text" class="form-control" id="do-card-lat" placeholder="Latitude (cth: -7.3021)" style="font-size:12px;">
+              <input type="text" class="form-control" id="do-card-lng" placeholder="Longitude (cth: 112.7819)" style="font-size:12px;">
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-open-map-picker-from-card" style="width:100%; padding:8px; border-color:#3b82f6; color:#1d4ed8; font-weight:600; background:#eff6ff;">
+              📍 Buka Peta & Pick Titik Koordinat (Map Picker)
+            </button>
+          </div>
+        </div>
+
+        <!-- Tanggal Rencana Kirim, Prioritas, & Catatan -->
+        <div class="form-grid-3" style="display:grid; grid-template-columns:1fr 1fr 1.5fr; gap:12px; margin-bottom:16px;">
+          <div>
+            <label class="form-label">Tanggal Rencana Kirim <strong style="color:red;">*</strong></label>
+            <input type="date" class="form-control" id="do-card-plan-date" required>
+          </div>
+          <div>
+            <label class="form-label">Prioritas Pengiriman</label>
+            <select class="form-control" id="do-card-priority">
+              <option value="NORMAL">NORMAL (Reguler)</option>
+              <option value="HARUS">HARUS (Prioritas Rute Pertama)</option>
+              <option value="URGENT">URGENT (Mendesak / Emergency)</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Catatan Pengiriman / Gerbang Gudang</label>
+            <input type="text" class="form-control" id="do-card-notes" placeholder="cth: Masuk gerbang barat, titip satpam, dll">
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button type="button" class="btn btn-outline" id="btn-do-card-cancel">Batal</button>
+          <button type="button" class="btn btn-primary" id="btn-do-card-submit" style="padding:10px 24px; font-weight:700; font-size:14px;">
+            🗓️ Simpan & Jadwalkan Pengiriman
+          </button>
+        </div>
+      </div>
+
+      <!-- DAFTAR SURAT JALAN YANG TELAH DIJADWALKAN -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+        <div style="font-weight:700; font-size:15px; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+          <span>📋 Daftar Pengiriman yang Telah Dijadwalkan</span>
+          <span class="status-badge connected" id="scheduled-count-badge" style="font-size:11px;">0 SJ</span>
+        </div>
+        <div class="no-print" style="display:flex; gap:8px; align-items:center;">
+          <input type="text" class="search-input" id="mkt-search" placeholder="Filter SJ di tabel..." style="width:200px; font-size:12px; padding:6px 10px;">
+          <select class="select-filter" id="mkt-filter-date" style="font-size:12px; padding:6px 10px;">
+            <option value="all">Semua Tanggal Jadwal</option>
+            <option value="tomorrow" selected>Besok (02/10/2026)</option>
+            <option value="today">Hari Ini</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th style="width:14%;">No. Surat Jalan</th>
+              <th style="width:14%;">No. PO & SO</th>
+              <th style="width:26%;">Pelanggan, Alamat & Koordinat</th>
+              <th style="width:8%;">Zona</th>
+              <th style="width:14%;">Kategori Muat</th>
+              <th style="width:12%;">Tanggal Kirim</th>
+              <th style="width:12%; text-align:center;">Tindakan</th>
+            </tr>
+          </thead>
+          <tbody id="mkt-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div>SJ yang telah dijadwalkan otomatis masuk ke <strong>Pengkategorian SKU</strong> (tim gudang) dan <strong>Otomasi Jalur Rute</strong> (tim pemuatan & operasional).</div>
+        <div id="mkt-summary">Memuat data...</div>
+      </div>
+    </section>
+
+    <!-- TAB: DISPATCHER — Penugasan Driver & Cek Muat -->
+    <section class="view-section" id="tab-penugasan-driver">
+      <div class="section-header">
+        <h2>Penugasan Driver & Cek Muat</h2>
+        <p>Dispatcher — Cek muatan motor/mobil, tugaskan driver, dan pastikan aturan 1 mobil = 1 zona.</p>
+      </div>
+
+      <div class="filter-row no-print">
+        <div class="filter-group">
+          <input type="text" class="search-input" id="disp-search" placeholder="Cari No. SJ, Pelanggan, atau Driver...">
+          <select class="select-filter" id="disp-filter-zona">
+            <option value="">Semua Zona</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <div class="status-badge" id="zone-lock-info" style="font-size:11px; display:none;">
+            <span id="zone-lock-text">Zona terkunci</span>
+          </div>
+          <button class="btn btn-primary" id="btn-open-sejalur" type="button" style="display:inline-flex; align-items:center; gap:8px; font-weight:700;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            Buka Optimasi & Pembagian Rute (Rute A, B, C...)
+          </button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th style="width:14%;">No. SJ</th>
+              <th style="width:20%;">Customer & Alamat</th>
+              <th style="width:8%;">Zona</th>
+              <th style="width:12%;">Kategori Muat</th>
+              <th style="width:14%;">Rekomendasi</th>
+              <th style="width:10%;">Armada</th>
+              <th style="width:12%;">Driver</th>
+              <th style="width:10%;">Tas Bingkisan</th>
+              <th style="width:10%; text-align:center;">Tindakan</th>
+            </tr>
+          </thead>
+          <tbody id="disp-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div><strong>1 mobil = 1 zona per hari.</strong> Jika ada item BESAR di SJ → wajib mobil. SEDANG → dispatcher evaluasi manual.</div>
+        <div id="disp-summary">Memuat data...</div>
+      </div>
+    </section>
+
+    <!-- TAB: MASTER KATEGORI SKU (Besar / Sedang / Kecil) -->
+    <section class="view-section" id="tab-master-sku">
+      <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <div>
+          <h2>Pengkategorian SKU dari Surat Jalan Terjadwal</h2>
+          <p>Daftar SKU otomatis dimuat dari Surat Jalan yang telah dijadwalkan marketing. Tentukan ukuran (Kecil / Sedang / Besar) untuk mengatur rekomendasi armada Mobil vs Motor.</p>
+        </div>
+        <div class="no-print" style="display:flex; gap:8px;">
+          <button class="btn btn-outline" id="btn-recalc-all-muat" type="button" title="Hitung ulang muatan seluruh Surat Jalan">
+            Hitung Ulang Muatan Semua SJ
+          </button>
+          <button class="btn btn-primary" id="btn-refresh-scheduled-sku" type="button">
+            ↻ Perbarui Daftar Item
+          </button>
+        </div>
+      </div>
+
+      <!-- Scheduled Items Stats -->
+      <div class="stat-cards-grid no-print" style="margin-bottom:16px;">
+        <div class="stat-card card-blue">
+          <div class="stat-label">Total Item di Jadwal Kirim</div>
+          <div class="stat-value" id="sku-sch-stat-total">0</div>
+          <div class="stat-desc" id="sku-sch-stat-sj-count">Dari 0 Surat Jalan</div>
+        </div>
+        <div class="stat-card card-besar">
+          <div class="stat-label">Barang BESAR (Wajib Mobil)</div>
+          <div class="stat-value" id="sku-sch-stat-besar">0</div>
+          <div class="stat-desc">Wajib Mobil Traga / Carry</div>
+        </div>
+        <div class="stat-card card-sedang">
+          <div class="stat-label">Barang SEDANG (Fleksibel)</div>
+          <div class="stat-value" id="sku-sch-stat-sedang">0</div>
+          <div class="stat-desc">Bisa diakali motor jika sedikit</div>
+        </div>
+        <div class="stat-card card-kecil">
+          <div class="stat-label">Barang KECIL (Motor)</div>
+          <div class="stat-value" id="sku-sch-stat-kecil">0</div>
+          <div class="stat-desc">Aman muat motor reguler</div>
+        </div>
+      </div>
+
+      <!-- Filter & Search Bar -->
+      <div class="filter-row no-print" style="margin-bottom:16px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+        <div class="filter-group" style="flex:1; min-width:260px;">
+          <input type="text" class="search-input" id="sku-sch-search" placeholder="Cari No. SKU, Nama Produk, atau No. SJ...">
+        </div>
+        <div class="filter-group" style="display:flex; gap:8px; align-items:center;">
+          <select class="select-filter" id="sku-scheduled-period" style="font-size:13px; padding:8px 12px;">
+            <option value="upcoming" selected>Semua SJ Terjadwal Aktif</option>
+            <option value="tomorrow">Jadwal Besok</option>
+            <option value="today">Jadwal Hari Ini</option>
+          </select>
+          <select class="select-filter" id="sku-sch-filter-size" style="font-size:13px; padding:8px 12px;">
+            <option value="">Semua Kategori Muat</option>
+            <option value="BESAR">Hanya Barang BESAR (Mobil)</option>
+            <option value="SEDANG">Hanya Barang SEDANG</option>
+            <option value="KECIL">Hanya Barang KECIL (Motor)</option>
+            <option value="UNCONFIRMED">⚠️ Perlu Cek Ukuran</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th style="width:40px; text-align:center;">No.</th>
+              <th style="width:16%;">No. SKU</th>
+              <th style="width:28%;">Nama Produk</th>
+              <th style="width:10%; text-align:center;">Total Qty</th>
+              <th style="width:22%;">Ada di Surat Jalan Mana Saja</th>
+              <th style="width:20%; text-align:center;">Kategori Muatan (1-Klik)</th>
+              <th style="width:10%; text-align:center;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="sku-scheduled-tbody">
+            <tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada item pada jadwal kirim yang dipilih.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer" style="margin-top:12px;">
+        <div>Aturan muatan otomatis: Jika SJ memuat minimal 1 barang BESAR → Otomatis Mobil (Carry / Traga). Jika memuat barang SEDANG → Evaluasi muatan. Jika semua KECIL → Muat Motor Reguler.</div>
+        <div id="sku-table-summary"></div>
+      </div>
+    </section>
+
+    <!-- TAB: OTOMASI JALUR RUTE (Kategorisasi Rute A, B, C, D...) -->
+    <section class="view-section" id="tab-otomasi-rute">
+      <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span class="status-pill jalan" style="font-size:11px; font-weight:700;">HALAMAN PENUGASAN RUTE</span>
+            <span class="status-pill siap" style="font-size:11px;">Multi-Stop Waypoints</span>
+            <span class="status-pill draft" style="font-size:11px;">Target 8–10 SJ Sejalur</span>
+          </div>
+          <h2 style="font-size:22px; font-weight:800; color:#0f172a; margin:0 0 6px 0;">Optimasi & Pembagian Rute (Rute A, B, C, D...)</h2>
+          <p style="margin:0; font-size:13px; color:#64748b; max-width:850px;">
+            Sistem otomatis mengelompokkan seluruh Surat Jalan ke rute koridor tujuan dengan susunan multi-stop terdekat dari Gudang J40. Tim operasional tinggal menentukan siapa pengemudi & armada yang akan membawanya.
+          </p>
+        </div>
+        <div class="no-print" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" id="btn-route-date-all" type="button">Semua Jadwal Aktif</button>
+          <button class="btn btn-outline btn-sm" id="btn-route-date-today" type="button">Hari Ini (02/10)</button>
+          <button class="btn btn-outline btn-sm" id="btn-route-date-tomorrow" type="button">Besok (03/10)</button>
+          <input type="date" class="select-filter" id="jalur-filter-date" style="padding:5px 8px; font-size:12px;" value="2026-10-02">
+          <button class="btn btn-outline btn-sm" id="btn-refresh-jalur" type="button">Muat Ulang</button>
+          <button class="btn btn-outline btn-sm" type="button" onclick="switchTab('tab-master-rute')" style="border-color:#2563eb; color:#2563eb; font-weight:700;">
+            ⚙️ Edit Master Rute (A, B, C...)
+          </button>
+          <button class="btn btn-outline btn-sm" type="button" onclick="switchTab('tab-penugasan-driver')" style="border-color:#cbd5e1; color:#334155; font-weight:600;">
+            ← Kembali ke Penugasan Driver
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Guidance & Operational Notice Banner -->
+      <div style="background:#ffffff; border:1px solid #bfdbfe; border-left:4px solid #2563eb; border-radius:10px; padding:14px 18px; margin-bottom:20px; box-shadow:0 2px 10px rgba(37,99,235,0.05); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+        <div style="flex:1; min-width:320px;">
+          <div style="font-weight:700; color:#1e40af; font-size:13px; margin-bottom:4px;">
+            💡 Panduan Operasional Tim Pengiriman:
+          </div>
+          <div style="font-size:12px; color:#334155; line-height:1.5;">
+            1. Setiap kartu di bawah adalah satu <strong>Rute Sejalur (Target ideal 8–10 SJ per rute)</strong>.<br>
+            2. Anda dapat <strong>menarik (drag & drop) stop</strong> atau klik tombol ▲ ▼ untuk mengatur urutan stop terdekat.<br>
+            3. Gunakan dropdown <strong>"Pindah Rute"</strong> pada tiap stop jika ada SJ yang ingin dialihkan ke koridor rute lain.<br>
+            4. Tentukan <strong>Driver & Armada</strong> di bagian atas kartu, lalu klik <strong>Tugaskan Rute Ini</strong>.<br>
+            5. Klik tombol <strong>"⚙️ Edit Master Rute"</strong> untuk mengatur ke arah mana Rute A, Rute B, Rute C, Rute D, Rute E, dst.
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+          <div class="status-badge" style="background:#eff6ff; border:1px solid #93c5fd; font-size:12px; padding:6px 12px; border-radius:8px; color:#1d4ed8; font-weight:700;">
+            🏢 Titik Awal: Gudang Utama J40 Sukolilo (-7.30211, 112.7819)
+          </div>
+          <div style="font-size:11px; color:#64748b;">
+            Standar ATS: 1 Mobil = 1 Zona Koridor per hari
+          </div>
+        </div>
+      </div>
+
+      <!-- Container Jalurs / Rute Terkategori -->
+      <div class="route-cluster-grid" id="jalur-cards-container">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- TAB: MASTER RUTE (Edit Arah & Area Tujuan Rute A, B, C, D, E, dst.) -->
+    <section class="view-section" id="tab-master-rute">
+      <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span class="status-pill siap" style="font-size:11px; font-weight:700;">MASTER KORIDOR PENGIRIMAN</span>
+            <span class="status-pill jalan" style="font-size:11px;">Klasifikasi Alamat Otomatis</span>
+          </div>
+          <h2 style="font-size:22px; font-weight:800; color:#0f172a; margin:0 0 6px 0;">Master Koridor Rute (Rute A, B, C, D, E, dst.)</h2>
+          <p style="margin:0; font-size:13px; color:#64748b; max-width:850px;">
+            Atur ke mana arah tujuan setiap rute (Rute A ke arah mana, Rute B ke mana, Rute C ke mana, dst.), tentukan kata kunci alamat/pelanggan untuk deteksi otomatis, kode zona terkait, dan warna badge rute.
+          </p>
+        </div>
+        <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" id="btn-add-new-master-route" type="button" style="display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+            + Tambah Rute Baru
+          </button>
+          <button class="btn btn-outline btn-sm" id="btn-refresh-master-routes" type="button">
+            ↻ Muat Ulang
+          </button>
+          <button class="btn btn-outline btn-sm" id="btn-reset-default-routes" type="button" style="color:#b91c1c; border-color:#fca5a5;">
+            Reset Default (A - F)
+          </button>
+          <button class="btn btn-outline btn-sm" type="button" onclick="switchTab('tab-otomasi-rute')" style="border-color:#2563eb; color:#2563eb; font-weight:700;">
+            ⇄ Buka Pembagian Rute &rarr;
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Guidance Banner -->
+      <div style="background:#ffffff; border:1px solid #bfdbfe; border-left:4px solid #0284c7; border-radius:10px; padding:12px 18px; margin-bottom:20px; font-size:12px; color:#334155; line-height:1.5;">
+        <strong>💡 Panduan Pengaturan Master Rute:</strong><br>
+        • <strong>Arah / Area Tujuan:</strong> Penjelasan jelas wilayah rute yang dibaca oleh tim gudang & driver (misal: <em>Rute A ke Gresik / Margomulyo</em>, <em>Rute B ke Sidoarjo / Waru</em>).<br>
+        • <strong>Kata Kunci Wilayah:</strong> Kata kunci alamat pengiriman (contoh: <code>GRESIK, MANYAR, MARGOMULYO</code>). Surat Jalan dari Accurate yang memuat kata kunci ini akan otomatis dikelompokkan ke rute tersebut.<br>
+        • <strong>Fleksibilitas Penuh:</strong> Anda dapat mengedit nama arah, menambah Rute G, H, dst., mengganti warna label, atau mengatur urutan prioritas rute.
+      </div>
+
+      <!-- Master Routes Table / Grid -->
+      <div class="table-card">
+        <table class="schedule-table" style="font-size:12px;">
+          <thead>
+            <tr>
+              <th style="width:10%; text-align:center;">Kode & Warna</th>
+              <th style="width:18%;">Nama Rute & Judul</th>
+              <th style="width:24%;">Arah / Area Tujuan (Ke Mana?)</th>
+              <th style="width:22%;">Kata Kunci Deteksi Otomatis</th>
+              <th style="width:8%; text-align:center;">Zona</th>
+              <th style="width:8%; text-align:center;">Status</th>
+              <th style="width:10%; text-align:center;">Tindakan</th>
+            </tr>
+          </thead>
+          <tbody id="master-routes-tbody">
+            <tr>
+              <td colspan="7" style="text-align:center; padding:20px; color:var(--text-muted);">Memuat daftar Master Rute...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB: RIWAYAT SEMUA PENGIRIMAN (Format Ekspedisi Spreadsheet Manual) -->
+    <section class="view-section" id="tab-riwayat-semua">
+      <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <div>
+          <h2>Riwayat Semua Pengiriman</h2>
+          <p>Master log & buku ekspedisi seluruh pengiriman (format spreadsheet manual ATS). Dilengkapi pencarian real-time, filter tanggal, dan ekspor Excel.</p>
+        </div>
+        <div class="no-print" style="display:flex; gap:8px;">
+          <button class="btn btn-outline" id="btn-export-excel-history" type="button">
+            Ekspor Excel (.csv)
+          </button>
+          <button class="btn btn-primary" id="btn-print-history" type="button">
+            Cetak Rekap Buku Jalan
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters & Period Bar -->
+      <div class="filter-row no-print">
+        <div class="filter-group">
+          <input type="text" class="search-input" id="hist-search" placeholder="Cari No. SJ, PO, Pelanggan, Alamat, Catatan..." style="width:280px;">
+          <select class="select-filter" id="hist-filter-period">
+            <option value="all">Semua Periode</option>
+            <option value="today">Hari Ini</option>
+            <option value="tomorrow" selected>Besok (02/10/2026)</option>
+            <option value="this_week">Minggu Ini</option>
+            <option value="custom">Pilih Rentang Tanggal...</option>
+          </select>
+          <div id="hist-custom-date-box" style="display:none; gap:6px; align-items:center;">
+            <input type="date" class="select-filter" id="hist-start-date" style="padding:4px 8px; font-size:12px;">
+            <span style="font-size:12px; color:var(--text-muted);">s/d</span>
+            <input type="date" class="select-filter" id="hist-end-date" style="padding:4px 8px; font-size:12px;">
+          </div>
+          <select class="select-filter" id="hist-filter-vehicle">
+            <option value="all">Semua Kendaraan</option>
+            <option value="MOBIL">MOBIL (Traga / Carry)</option>
+            <option value="MOTOR">MOTOR</option>
+            <option value="PICKUP">AMBIL DI J23</option>
+          </select>
+          <select class="select-filter" id="hist-filter-driver">
+            <option value="all">Semua Driver</option>
+          </select>
+          <select class="select-filter" id="hist-filter-status">
+            <option value="all">Semua Status</option>
+            <option value="ASSIGNED">Ditugaskan (ASSIGNED)</option>
+            <option value="SCHEDULED">Terjadwal (SCHEDULED)</option>
+            <option value="IN_TRANSIT">Dalam Perjalanan (IN_TRANSIT)</option>
+            <option value="DELIVERED">Terkirim (DELIVERED)</option>
+            <option value="PICKUP_READY">Ambil di J23 (PICKUP)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Quick Summary Pills -->
+      <div class="hist-summary-pills no-print" style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+        <span class="hist-pill active" data-filter-veh="all" style="padding:4px 12px; border-radius:16px; background:#e2e8f0; font-size:12px; font-weight:600; cursor:pointer;">Semua (<span id="hist-stat-total">0</span>)</span>
+        <span class="hist-pill" data-filter-veh="MOBIL" style="padding:4px 12px; border-radius:16px; background:#f1f5f9; font-size:12px; font-weight:600; cursor:pointer;">Mobil (<span id="hist-stat-mobil">0</span>)</span>
+        <span class="hist-pill" data-filter-veh="MOTOR" style="padding:4px 12px; border-radius:16px; background:#f1f5f9; font-size:12px; font-weight:600; cursor:pointer;">Motor (<span id="hist-stat-motor">0</span>)</span>
+        <span class="hist-pill" data-filter-veh="PICKUP" style="padding:4px 12px; border-radius:16px; background:#f1f5f9; font-size:12px; font-weight:600; cursor:pointer;">Pickup J23 (<span id="hist-stat-pickup">0</span>)</span>
+        <span class="hist-pill" data-filter-veh="DELIVERED" style="padding:4px 12px; border-radius:16px; background:#f1f5f9; font-size:12px; font-weight:600; cursor:pointer;">Terkirim Selesai (<span id="hist-stat-delivered">0</span>)</span>
+      </div>
+
+      <!-- Excel-like Master Spreadsheet Table -->
+      <div class="table-card spreadsheet-card">
+        <div class="spreadsheet-header-banner" style="background:#2563eb; color:#fff; padding:10px 16px; border-radius:6px 6px 0 0; display:flex; justify-content:space-between; align-items:center;">
+          <div class="spreadsheet-day-badge" id="hist-day-banner" style="font-weight:700; font-size:14px; letter-spacing:0.5px;">REKAP OPERASIONAL PENGIRIMAN ATS</div>
+          <div class="spreadsheet-meta-info" id="hist-meta-banner" style="font-size:12px; opacity:0.9;">Format Buku Ekspedisi Jalan</div>
+        </div>
+        <table class="schedule-table spreadsheet-table">
+          <thead>
+            <tr style="background:#f8fafc;">
+              <th style="width:60px; text-align:center;">No.</th>
+              <th style="width:10%;">Tanggal</th>
+              <th style="width:20%;">Customer / Pelanggan</th>
+              <th style="width:9%; text-align:center;">Kendaraan</th>
+              <th style="width:14%;">No. PO / Ref</th>
+              <th style="width:13%;">No. Surat Jalan</th>
+              <th style="width:24%;">Alamat & Catatan Khusus</th>
+              <th style="width:10%;">Driver</th>
+              <th style="width:10%; text-align:center;">Status</th>
+              <th style="width:8%; text-align:center;" class="no-print">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="hist-tbody">
+            <tr><td colspan="10" style="text-align:center; padding:30px; color:var(--text-muted);">Memuat riwayat pengiriman...</td></tr>
+          </tbody>
+        </table>
+        <!-- Pagination -->
+        <div class="pagination-bar no-print">
+          <div id="hist-pagination-info">Menampilkan 0 dari 0 baris pengiriman</div>
+          <div class="pagination-controls">
+            <button class="btn btn-outline btn-sm" id="hist-prev-page" type="button">Sebelumnya</button>
+            <span id="hist-current-page" style="font-weight:700; padding:0 8px;">1</span>
+            <button class="btn btn-outline btn-sm" id="hist-next-page" type="button">Selanjutnya</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: JADWAL HARIAN (Monitor) -->
+    <section class="view-section" id="tab-jadwal-harian">
+      <div class="section-header">
+        <h2>Jadwal Kirim Harian</h2>
+        <p>Monitor — Lihat semua pengiriman yang sudah ditugaskan ke driver dan armada hari ini.</p>
+      </div>
+
+      <div class="filter-row no-print">
+        <div class="filter-group">
+          <input type="text" class="search-input" id="mon-search" placeholder="Cari No. SJ, Pelanggan, atau Driver...">
+          <select class="select-filter" id="mon-filter-driver">
+            <option value="">Semua Pengemudi</option>
+          </select>
+          <input type="date" class="select-filter" id="mon-filter-date">
+        </div>
+        <div class="filter-group">
+          <button class="btn btn-outline" id="btn-print" type="button">Cetak Jadwal</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th style="width:40px; text-align:center;">No</th>
+              <th style="width:14%;">No. SJ & PO</th>
+              <th style="width:22%;">Customer & Alamat</th>
+              <th style="width:10%;">Tas</th>
+              <th style="width:12%;">Armada</th>
+              <th style="width:12%;">Pengemudi</th>
+              <th style="width:10%;">Status</th>
+              <th style="width:12%;">Cek Dokumen</th>
+            </tr>
+          </thead>
+          <tbody id="mon-tbody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div>Urutan otomatis pengiriman dari Gudang J40 (terdekat ke terjauh).</div>
+        <div id="mon-summary"></div>
+      </div>
+    </section>
+
+    <!-- TAB: AMBIL DI J23 (Customer Pickup) -->
+    <section class="view-section" id="tab-pickup-j23">
+      <div class="section-header">
+        <h2>Pengambilan Barang di J23 (Customer Pickup)</h2>
+        <p>Khusus pesanan dengan metode <strong>DIAMBIL DI J23</strong>. Barang diambil langsung oleh customer di loket kantor J23.</p>
+      </div>
+
+      <div class="filter-row no-print">
+        <div class="filter-group">
+          <input type="text" class="search-input" id="pickup-search" placeholder="Cari No. SJ, Pelanggan, atau PO...">
+          <select class="select-filter" id="pickup-filter-status">
+            <option value="">Semua Status Pickup</option>
+            <option value="PICKUP_READY">Siap Diambil di J23</option>
+            <option value="PICKUP_DONE">Sudah Selesai Diambil</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <div class="status-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:12px; padding:6px 12px; border-radius:6px;">
+            <strong>Loket J23:</strong> Ruko Galaxi Bumi Permai J1/23
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th style="width:16%;">No. Surat Jalan</th>
+              <th style="width:14%;">No. PO & SO</th>
+              <th style="width:24%;">Pelanggan</th>
+              <th style="width:16%;">Lokasi Pengambilan</th>
+              <th style="width:14%;">Status Pickup</th>
+              <th style="width:16%; text-align:center;">Aksi Loket</th>
+            </tr>
+          </thead>
+          <tbody id="pickup-tbody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div>Pesanan DIAMBIL DI J23 tidak dimasukkan ke rute pengiriman armada atau jadwal driver.</div>
+        <div id="pickup-summary">Memuat data pickup...</div>
+      </div>
+    </section>
+
+    <!-- TAB: CHECKER -->
+    <section class="view-section" id="tab-checker">
+      <div class="section-header">
+        <h2>Pemeriksaan Dokumen (Checker)</h2>
+        <p>Verifikasi kelengkapan berkas fisik sebelum pengiriman berangkat.</p>
+      </div>
+      <div class="table-card">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th style="width:15%;">No. SJ</th>
+              <th style="width:22%;">Customer</th>
+              <th style="width:12%;">Pengemudi</th>
+              <th style="width:12%;">Penerima</th>
+              <th style="width:26%;">Centang Dokumen</th>
+              <th style="width:13%; text-align:center;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="checker-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB: URGENT -->
+    <section class="view-section" id="tab-urgent">
+      <div class="section-header">
+        <h2>Persetujuan Urgent — Kepala Operasional</h2>
+        <p>Persetujuan pengiriman barang susulan mendesak atau armada di luar kuota normal.</p>
+      </div>
+      <div class="table-card">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th style="width:14%;">Kode</th>
+              <th style="width:12%;">Tanggal</th>
+              <th style="width:10%;">Zona</th>
+              <th style="width:28%;">Alasan</th>
+              <th style="width:16%;">Driver</th>
+              <th style="width:12%; text-align:center;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="urgent-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB: ADMIN (Superadmin) -->
+    <section class="view-section" id="tab-admin-users">
+      <div class="section-header">
+        <h2>Kelola User & Hak Akses</h2>
+        <p>Superadmin — Buat, edit, aktifkan/nonaktifkan akun pengguna dan konfigurasi izin akses.</p>
+      </div>
+
+      <div class="filter-row no-print">
+        <div class="filter-group">
+          <input type="text" class="search-input" id="admin-search" placeholder="Cari nama, username, atau role...">
+        </div>
+        <div class="filter-group">
+          <button class="btn btn-primary" id="btn-add-user" type="button">Tambah User Baru</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th style="width:18%;">Nama</th>
+              <th style="width:12%;">Username</th>
+              <th style="width:12%;">Role</th>
+              <th style="width:14%;">Departemen</th>
+              <th style="width:24%;">Permissions</th>
+              <th style="width:8%;">Status</th>
+              <th style="width:12%; text-align:center;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="admin-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    </main>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       MODAL: JADWALKAN TANGGAL (Marketing)
+       ═══════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-schedule-date">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Jadwalkan Tanggal Kirim</div>
+        <button class="close-btn" id="btn-close-mkt-modal" type="button">&times;</button>
+      </div>
+      <form id="form-schedule-date">
+        <div class="form-group">
+          <label class="form-label">SJ yang Dipilih</label>
+          <div id="mkt-selected-list" style="font-size:13px; color:var(--text-secondary); padding:8px; background:var(--bg-subtle); border-radius:6px; max-height:120px; overflow-y:auto;"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tanggal Kirim</label>
+          <input type="date" class="form-control" id="mkt-plan-date" required>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="btn-cancel-mkt-modal">Batal</button>
+          <button type="submit" class="btn btn-primary">Jadwalkan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       MODAL: TUGASKAN DRIVER (Dispatcher)
+       ═══════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-assign-driver">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Tugaskan Driver & Armada</div>
+        <button class="close-btn" id="btn-close-disp-modal" type="button">&times;</button>
+      </div>
+      <form id="form-assign-driver">
+        <input type="hidden" id="disp-shipment-id">
+
+        <div class="form-group">
+          <label class="form-label">Surat Jalan</label>
+          <div id="disp-sj-info" style="font-size:13px; color:var(--text-secondary); padding:8px; background:var(--bg-subtle); border-radius:6px;"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Kategori Muat SKU</label>
+          <div id="disp-muat-info" style="display:flex; gap:8px; align-items:center;"></div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Pilihan Armada</label>
+            <select class="form-control" id="disp-vehicle" required>
+              <option value="MOTOR">Motor (SIM C)</option>
+              <option value="CARRY">Suzuki Carry (SIM A/B1)</option>
+              <option value="TRAGA">Isuzu Traga (SIM A/B1)</option>
+              <option value="GRANMAX">Gran Max (SIM A/B1)</option>
+              <option value="AVANZA">Avanza (SIM A/B1)</option>
+              <option value="TRUK">Truk Operasional</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pilih Driver</label>
+            <select class="form-control" id="disp-driver" required>
+              <option value="">-- Pilih Pengemudi --</option>
+              <option value="Munir">Munir (Isuzu Traga)</option>
+              <option value="Dani">Dani (Suzuki Carry)</option>
+              <option value="Agus">Agus (Gran Max / Avanza)</option>
+              <option value="Arifin">Arifin (Gran Max / Avanza)</option>
+              <option value="Angga">Angga (Motor)</option>
+              <option value="Markus">Markus (Motor)</option>
+              <option value="Zahril">Zahril (Motor)</option>
+              <option value="Aldi">Aldi (Motor)</option>
+              <option value="Hendrik">Hendrik (Motor)</option>
+              <option value="Cahyono">Cahyono (Truk)</option>
+              <option value="Pak Adi">Pak Adi (Motor)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-warning" id="disp-sim-warning"></div>
+
+        <div class="form-group">
+          <label class="form-label">Tas Bingkisan Customer</label>
+          <select class="form-control" id="disp-tas">
+            <option value="KECIL">Tas Kecil (Bingkisan Standar)</option>
+            <option value="BESAR">Tas Besar (Bingkisan Jumbo)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Catatan Pengiriman</label>
+          <input type="text" class="form-control" id="disp-notes" placeholder="Catatan instruksi driver...">
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="btn-cancel-disp-modal">Batal</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-disp">Tugaskan Pengiriman</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════
+       MODAL: DETAIL PRODUK SURAT JALAN & REKOMENDASI MUATAN
+       ═══════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-sj-detail">
+    <div class="modal-content" style="max-width:760px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="modal-sj-title">Detail Produk Surat Jalan</div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;" id="modal-sj-subtitle">Daftar item & rekomendasi kendaraan muatan</div>
+        </div>
+        <button class="close-btn" id="btn-close-sj-detail" type="button">&times;</button>
+      </div>
+
+      <!-- Recommendation Banner -->
+      <div class="muat-banner banner-kecil" id="modal-sj-banner">
+        <!-- Filled dynamically -->
+      </div>
+
+      <!-- Customer & Address Summary -->
+      <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; padding:12px 14px; margin-bottom:16px; font-size:12px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div><strong>Pelanggan:</strong> <span id="modal-sj-customer">-</span></div>
+          <div><strong>No. PO / SO:</strong> <span id="modal-sj-po">-</span></div>
+          <div style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+            <div><strong>Alamat Pengiriman:</strong> <span id="modal-sj-address">-</span></div>
+            <button type="button" class="btn btn-outline btn-xs" id="btn-modal-edit-addr" style="flex-shrink:0;">Edit Alamat & Titik</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table Line Items -->
+      <div style="margin-bottom:16px; max-height:280px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px;">
+        <table class="schedule-table" style="font-size:12px;">
+          <thead>
+            <tr>
+              <th style="width:40px; text-align:center;">No</th>
+              <th style="width:20%;">No. SKU</th>
+              <th style="width:38%;">Nama Barang</th>
+              <th style="width:18%; text-align:center;">Qty & Satuan</th>
+              <th style="width:20%; text-align:center;">Kategori Ukuran</th>
+            </tr>
+          </thead>
+          <tbody id="modal-sj-items-tbody">
+            <!-- Items rendered by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="form-actions" style="margin-top:0; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-sync-current-sj-items" style="display:none;">
+            Tarik Ulang dari Accurate
+          </button>
+        </div>
+        <button type="button" class="btn btn-outline" id="btn-close-sj-detail-btn">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       MODAL: EDIT ALAMAT & TITIK KOORDINAT (Marketing)
+       ═══════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-edit-address">
+    <div class="modal-content" style="max-width:640px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Edit Alamat & Titik Pengiriman</div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;" id="edit-addr-subtitle">Atur alamat dan koordinat GPS agar optimasi rute akurat</div>
+        </div>
+        <button class="close-btn" id="btn-close-edit-addr" type="button">&times;</button>
+      </div>
+
+      <form id="form-edit-address">
+        <input type="hidden" id="edit-addr-shipment-id">
+
+        <div class="form-group">
+          <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Alamat Lengkap Pengiriman <strong style="color:red;">*</strong></span>
+            <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">Diisi oleh Marketing</span>
+          </label>
+          <textarea class="form-control" id="edit-addr-text" rows="3" required placeholder="Contoh: Jl. Margomulyo Industri I Blok A9 - 13, Pergudangan Suri Mulia, Surabaya"></textarea>
+          
+          <div style="margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-edit-addr-auto-pick" style="font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+              <span>Ambil Titik Koordinat dari Alamat</span>
+            </button>
+            <span id="edit-addr-pick-status" style="font-size:12px; font-weight:600; display:none;"></span>
+          </div>
+        </div>
+
+        <div class="form-group" style="background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; padding:12px;">
+          <label class="form-label" style="font-size:12px; margin-bottom:6px;">
+            Pilih Cepat Kawasan Industri / Wilayah (Preset Otomatis Titik Koordinat)
+          </label>
+          <select class="form-control" id="edit-addr-preset" style="font-size:12px;">
+            <option value="">-- Pilih Kawasan Industri / Wilayah --</option>
+            <option value="-7.2415,112.6842,FR">Margomulyo Industri / Tandes, Surabaya (Zona FR)</option>
+            <option value="-7.3325,112.7681,FR">SIER / Rungkut Industri, Surabaya (Zona FR)</option>
+            <option value="-7.3100,112.7300,FR">Surabaya Pusat / Wonokromo (Zona FR)</option>
+            <option value="-7.3524,112.7291,B">Waru / Berbek Industri / Tambak Sawah (Zona B)</option>
+            <option value="-7.3820,112.7310,B">Gedangan Industri / Aloha, Sidoarjo (Zona B)</option>
+            <option value="-7.4128,112.7215,C">Kawasan Industri Buduran Km 24, Sidoarjo (Zona C)</option>
+            <option value="-7.4500,112.7150,C">Sidoarjo Kota / Candi Industri (Zona C)</option>
+            <option value="-7.1350,112.6100,A">KIM / Manyar Mas Sejahtera, Gresik (Zona A)</option>
+            <option value="-7.1650,112.6350,A">Kebomas / Petrokimia, Gresik (Zona A)</option>
+            <option value="-7.5800,112.6200,NG">Ngoro Industrial Park (NIP), Mojokerto (Zona NG)</option>
+            <option value="-7.6124,112.8211,PSR">PIER Rembang / Pasuruan Industri (Zona PSR)</option>
+            <option value="-7.301972,112.7817558,FR">Loket Customer Pickup Kantor J23</option>
+            <option value="-7.30211,112.7819,FR">Gudang Utama J40 (Muat Armada)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Input / Tempel Koordinat GPS atau Link Google Maps</span>
+            <span style="font-size:11px; color:var(--text-muted);">Format: -7.2415, 112.6842</span>
+          </label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" class="form-control" id="edit-addr-coords-input" placeholder="Paste link Google Maps atau koordinat lat,lng di sini...">
+            <button type="button" class="btn btn-outline" id="btn-parse-coords" style="flex-shrink:0;">Uraikan</button>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Latitude (Garis Lintang)</label>
+            <input type="number" step="any" class="form-control" id="edit-addr-lat" placeholder="cth: -7.2415">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Longitude (Garis Bujur)</label>
+            <input type="number" step="any" class="form-control" id="edit-addr-lng" placeholder="cth: 112.6842">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Zona Wilayah Pengiriman</label>
+            <select class="form-control" id="edit-addr-zone" required>
+              <option value="FR">Zona FR — Surabaya (Rungkut, SIER, Margomulyo, Kenjeran)</option>
+              <option value="B">Zona B — Sidoarjo Utara (Waru, Berbek, Gedangan, Sedati)</option>
+              <option value="C">Zona C — Sidoarjo Selatan (Buduran, Candi, Tanggulangin, Porong)</option>
+              <option value="A">Zona A — Gresik (Manyar, Kebomas, Driyorejo)</option>
+              <option value="NG">Zona NG — Mojokerto / Ngoro Industri (NIP)</option>
+              <option value="PSR">Zona PSR — Pasuruan / PIER Rembang / Beji</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Catatan Gerbang / Akses Gudang</label>
+            <input type="text" class="form-control" id="edit-addr-notes" placeholder="cth: Masuk Pos Satpam Timur / BC 4.0">
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <button type="button" class="btn btn-outline btn-sm" id="btn-open-map-picker-from-edit" style="color:#2563eb; border-color:#93c5fd; background:#eff6ff;">
+            📍 Buka Peta & Pick Koordinat (Map Picker)
+          </button>
+          <a href="#" target="_blank" id="edit-addr-preview-link" class="btn btn-outline btn-sm" style="display:none; text-decoration:none;">
+            Buka Titik di Google Maps
+          </a>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="btn-cancel-edit-addr">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Alamat & Koordinat</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       MODAL: PICK KOORDINAT DARI PETA (LEAFLET INTERAKTIF)
+       ═══════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-map-picker">
+    <div class="modal-content" style="max-width:760px; width:95%;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" style="display:flex; align-items:center; gap:8px;">
+            <span>📍 Tentukan Titik Koordinat dari Peta</span>
+            <span class="status-badge connected" id="map-modal-zone-badge" style="font-size:12px;">Zona B</span>
+          </div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">
+            Klik pada peta atau geser (drag) pin merah untuk menentukan koordinat lokasi tujuan pengiriman.
+          </div>
+        </div>
+        <button class="close-btn" id="btn-close-map-picker" type="button">&times;</button>
+      </div>
+
+      <!-- Search Bar on Top of Map -->
+      <div style="margin-bottom:12px; position:relative;">
+        <div style="display:flex; gap:8px;">
+          <div style="flex:1; position:relative;">
+            <input type="text" class="form-control" id="map-search-address-input" placeholder="Ketik nama jalan, pabrik, atau kawasan (cth: Margomulyo 44, SIER, PT ECCO Sidoarjo)..." style="font-size:13px; padding:9px 12px;">
+            <div id="map-search-suggestions" class="address-suggest-dropdown" style="display:none;"></div>
+          </div>
+          <button type="button" class="btn btn-primary" id="btn-map-search-exec" style="padding:9px 16px; font-weight:700; white-space:nowrap;">
+            🔍 Cari di Peta
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Industrial Area Buttons -->
+      <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:6px;">
+        <span style="font-size:11px; font-weight:700; color:var(--text-muted); align-self:center; margin-right:4px;">Pilih Cepat Kawasan:</span>
+        <button type="button" class="btn btn-outline btn-xs btn-map-preset" data-lat="-7.30211" data-lng="112.7819" data-zone="FR">Gudang J40 (Rungkut)</button>
+        <button type="button" class="btn btn-outline btn-xs btn-map-preset" data-lat="-7.3325" data-lng="112.7681" data-zone="FR">SIER / Rungkut Industri</button>
+        <button type="button" class="btn btn-outline btn-xs btn-map-preset" data-lat="-7.2415" data-lng="112.6842" data-zone="A">Margomulyo / Tandes</button>
+        <button type="button" class="btn btn-outline btn-xs btn-map-preset" data-lat="-7.3524" data-lng="112.7291" data-zone="B">Waru / Berbek Industri</button>
+        <button type="button" class="btn btn-outline btn-xs btn-map-preset" data-lat="-7.4128" data-lng="112.7215" data-zone="C">Buduran / Gedangan</button>
+        <button type="button" class="btn btn-outline btn-xs btn-map-preset" data-lat="-7.6124" data-lng="112.8211" data-zone="PSR">PIER Rembang Pasuruan</button>
+        <button type="button" class="btn btn-outline btn-xs btn-map-preset" data-lat="-7.5800" data-lng="112.6200" data-zone="NG">NIP Ngoro Mojokerto</button>
+        <button type="button" class="btn btn-outline btn-xs btn-map-preset" data-lat="-7.1350" data-lng="112.6100" data-zone="A">Manyar / KIM Gresik</button>
+        <button type="button" class="btn btn-outline btn-xs btn-map-preset" data-lat="-7.2850" data-lng="112.7450" data-zone="FR">Surabaya Pusat</button>
+      </div>
+
+      <!-- Leaflet Map Container -->
+      <div id="leaflet-map-container" style="height:380px; width:100%; border-radius:8px; border:1px solid #cbd5e1; position:relative; overflow:hidden; background:#f1f5f9;">
+        <!-- Leaflet renders here -->
+      </div>
+
+      <!-- Coordinates Display & Confirmation Bar -->
+      <div style="margin-top:12px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="font-size:13px;">
+          <div><strong>Titik Terpilih:</strong> <span id="map-picked-coords">-7.3021, 112.7819</span></div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Zona Terdeteksi: <strong id="map-picked-zone-text" style="color:#2563eb;">Zona FR (Surabaya)</strong></div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-outline" id="btn-cancel-map-picker">Batal</button>
+          <button type="button" class="btn btn-primary" id="btn-save-map-picker">Gunakan Titik Koordinat Ini</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       MODAL: EDIT / TAMBAH MASTER RUTE
+       ═══════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-master-route">
+    <div class="modal-content" style="max-width:680px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="modal-master-route-title">Atur Master Rute</div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;" id="modal-master-route-subtitle">Tentukan arah tujuan dan kata kunci pencocokan rute</div>
+        </div>
+        <button class="close-btn" id="btn-close-master-route-modal" type="button">&times;</button>
+      </div>
+      <form id="form-master-route">
+        <input type="hidden" id="route-form-mode" value="add">
+        <input type="hidden" id="route-form-id" value="">
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Kode Rute (Huruf)*</label>
+            <input type="text" class="form-control" id="route-form-code" required placeholder="Contoh: A, B, C, D, E, F, G..." maxlength="5" style="font-weight:700; text-transform:uppercase;">
+            <div style="font-size:11px; color:#64748b; margin-top:2px;">Huruf identitas rute (misal: A, B, C, D, E, dst.)</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nama Rute*</label>
+            <input type="text" class="form-control" id="route-form-name" required placeholder="Contoh: Rute A">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Judul Koridor Rute*</label>
+          <input type="text" class="form-control" id="route-form-title" required placeholder="Contoh: Koridor Gresik, Margomulyo & Surabaya Barat">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Arah & Area Tujuan (Ke Mana?)*</label>
+          <textarea class="form-control" id="route-form-area" rows="2" required placeholder="Contoh: Gresik, Manyar, Margomulyo, Tandes, Romokalisari, Benowo, Driyorejo" style="font-size:13px;"></textarea>
+          <div style="font-size:11px; color:#64748b; margin-top:2px;">Tuliskan daftar kota / kecamatan / kawasan industri yang menjadi tujuan rute ini.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Kata Kunci Deteksi Alamat & Pelanggan (Otomatis)*</label>
+          <textarea class="form-control" id="route-form-keywords" rows="3" required placeholder="Contoh: GRESIK, MANYAR, KEBOMAS, MARGOMULYO, TANDES, ROMOKALISARI, BENOWO, DRIYOREJO, A" style="font-size:13px; font-family:monospace;"></textarea>
+          <div style="font-size:11px; color:#64748b; margin-top:2px;">Pisahkan dengan koma (,). Dokumen SJ dengan alamat atau pelanggan yang mengandung kata ini akan otomatis masuk rute ini.</div>
+        </div>
+
+        <div class="form-grid-3" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Zona Terkait</label>
+            <select class="form-control" id="route-form-zone">
+              <option value="A">Zona A (Gresik)</option>
+              <option value="B">Zona B (Waru / Sidoarjo)</option>
+              <option value="C">Zona C (Sidoarjo Kota / Candi)</option>
+              <option value="PSR">Zona PSR (Pasuruan / Gempol)</option>
+              <option value="NG">Zona NG (Mojokerto / Ngoro)</option>
+              <option value="FR">Zona FR (Surabaya / SIER)</option>
+              <option value="D">Zona D</option>
+              <option value="E">Zona E</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Warna Badge</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="color" class="form-control" id="route-form-color" value="#2563eb" style="width:48px; height:38px; padding:2px; cursor:pointer;">
+              <span id="route-form-color-preview" class="badge" style="background:#2563eb; color:white; font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px;">Preview Rute</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Urutan Tampilan</label>
+            <input type="number" class="form-control" id="route-form-sequence" min="1" max="99" value="1" required>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:8px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; cursor:pointer;">
+            <input type="checkbox" id="route-form-active" checked style="width:16px; height:16px;">
+            <span>Aktifkan rute ini (digunakan dalam pengelompokan pengiriman)</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Keterangan / Catatan Operasional (Opsional)</label>
+          <input type="text" class="form-control" id="route-form-desc" placeholder="Catatan operasional jalur rute...">
+        </div>
+
+        <div class="form-actions" style="margin-top:20px; display:flex; justify-content:flex-end; gap:8px;">
+          <button type="button" class="btn btn-outline" id="btn-cancel-master-route-modal">Batal</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-master-route">Simpan Rute</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       MODAL: TAMBAH/EDIT USER (Admin)
+       ═══════════════════════════════════════════════ -->
+
+  <div class="modal-overlay" id="modal-user">
+    <div class="modal-content" style="max-width:620px;">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-user-title">Tambah User</div>
+        <button class="close-btn" id="btn-close-user-modal" type="button">&times;</button>
+      </div>
+      <form id="form-user">
+        <input type="hidden" id="edit-user-id">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Nama Lengkap</label>
+            <input type="text" class="form-control" id="user-name" required placeholder="Nama lengkap">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control" id="user-username" required placeholder="username">
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <select class="form-control" id="user-role">
+              <option value="SUPERADMIN">Superadmin</option>
+              <option value="MARKETING">Marketing</option>
+              <option value="DISPATCHER">Dispatcher</option>
+              <option value="DRIVER">Driver Utama</option>
+              <option value="BACKUP_DRIVER">Driver Cadangan</option>
+              <option value="CHECKER_L1">Checker L1</option>
+              <option value="CHECKER_L2">Checker L2</option>
+              <option value="KEPALA_OPERASIONAL">Kepala Operasional</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Departemen</label>
+            <input type="text" class="form-control" id="user-dept" placeholder="Departemen">
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">SIM</label>
+            <input type="text" class="form-control" id="user-license" placeholder="A,C">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Warna Label</label>
+            <input type="color" class="form-control" id="user-color" value="#2563eb" style="height:38px; padding:2px;">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hak Akses (Permissions)</label>
+          <div id="perm-checkboxes" style="display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:12px; max-height:200px; overflow-y:auto; padding:8px; background:var(--bg-subtle); border-radius:6px;"></div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="btn-cancel-user-modal">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       LOGIN OVERLAY
+       ═══════════════════════════════════════════════ -->
+  <div class="login-screen-overlay" id="login-overlay">
+    <div class="login-card-box">
+      <div class="login-logo-center">
+        <div class="brand-icon">ATS</div>
+        <h2>Masuk ke Sistem</h2>
+        <p>Jadwal Pengiriman & Penugasan Driver — Accurate Online</p>
+      </div>
+      <div class="login-error-box" id="login-error-msg"></div>
+      <form id="form-login">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-control" id="login-username" placeholder="Masukkan username" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" id="login-password" placeholder="Masukkan password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%; padding:12px; font-size:14px; margin-top:8px;">Masuk</button>
+      </form>
+      <div class="quick-login-section">
+        <h4>Masuk Cepat:</h4>
+        <div class="quick-chips-grid" id="quick-login-chips">
+          <button type="button" class="quick-chip" data-user="admin">Admin (Superadmin)</button>
+          <button type="button" class="quick-chip" data-user="rina">Rina (Marketing)</button>
+          <button type="button" class="quick-chip" data-user="dispatcher">Budi (Dispatcher)</button>
+          <button type="button" class="quick-chip" data-user="hana">Hana (Checker)</button>
+          <button type="button" class="quick-chip" data-user="kepala.ops">Handoko (Kepala Ops)</button>
+          <button type="button" class="quick-chip" data-user="munir">Munir (Driver)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/icons.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
